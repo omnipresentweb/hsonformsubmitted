@@ -7,7 +7,7 @@ const mutiny = // initialize Mutiny SDK
 const cpTenantDomain = 'example';
 const cpRouterName = 'contact'; 
 
-// Define a constant to specify which forms should trigger Chili Piper
+// Define HS FormIDs that should trigger Chili Piper
 const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
 
 // Reusable function to get form data
