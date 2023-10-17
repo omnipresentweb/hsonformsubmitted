@@ -1,3 +1,5 @@
+console.log("jsdeliver hsOnFormSubmitted script started");
+
 // Initialize analytics SDKs
 const analytics = // initialize analytics SDK
 const heap = // initialize Heap SDK 
@@ -12,6 +14,7 @@ const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
 
 // Function to get form data
 function getFormData(form) {
+    console.log("jsdeliver hsOnFormSubmitted script: getFormData started");
   return Object.fromEntries(
     Object.entries(form).map(([key, field]) => {
       const value = Array.isArray(field.value)
@@ -24,6 +27,7 @@ function getFormData(form) {
 
 // Function send conversion data to analytic tools
 function trackConversion(name, email) {
+    console.log("jsdeliver hsOnFormSubmitted script: trackConversion started");
     // Mutiny
     mutiny.client.trackConversion({
     name
@@ -60,6 +64,7 @@ function trackConversion(name, email) {
 
 // Reusable function for onFormSubmitted
 function onFormSubmitted(form, formId, conversionName) {
+    console.log("jsdeliver hsOnFormSubmitted script: onFormSubmitted function started");
     const formData = getFormData(form);
     const email = formData.email;
   
