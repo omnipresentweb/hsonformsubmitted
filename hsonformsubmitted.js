@@ -10,7 +10,7 @@ const cpRouterName = "book_a_call";
 // Define HS FormIDs that should trigger Chili Piper
 const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
 
-// Reusable function to get form data
+// Function to get form data
 function getFormData(form) {
   return Object.fromEntries(
     Object.entries(form).map(([key, field]) => {
@@ -22,37 +22,57 @@ function getFormData(form) {
   );
 }
 
-// Reusable function to track conversions
-function trackConversion(name) {
-  // Mutiny
-  mutiny.client.trackConversion({
+// Function send conversion data to analytic tools
+function trackConversion(name, email) {
+    // Mutiny
+    mutiny.client.trackConversion({
     name
-  });
+    });
 
-  // Dreamdata
-  const email = getFormData(form).email;
-  if (email) {
+    // Dreamdata
+    const email = getFormData(form).email;
+    if (email) {
     analytics.identify(null, {email});
     analytics.track(name);
-  }
+    }
 
-  // Heap
-  heap.track(name, {email});
+    // Heap
+    heap.track(name, {email});
+
+    // Fetch contact ID and identify with Mutiny and Heap
+    window.fetchContactId(email)
+    .then(contactId => {
+        if (typeof window.mutiny.client.identify !== 'function') {
+        console.error('Error: Mutiny identify method not found');
+        return;
+        }
+
+        // Identify with Mutiny
+        window.mutiny.client.identify(contactId, { email });
+        console.log('Sent identify call to Mutiny with contact ID:', contactId, 'and email:', email);
+
+        // Identify with Heap
+        heap.identify(contactId);
+        console.log('Sent identify call to Heap with contact ID:', contactId);
+    })
+    .catch(error => console.error('Error:', error));
 }
 
 // Reusable function for onFormSubmitted
 function onFormSubmitted(form, formId, conversionName) {
-  // Track conversions
-  trackConversion(conversionName);
-
-  // Conditionally trigger Chili Piper
-  if (chiliPiperForms.includes(formId)) {
     const formData = getFormData(form);
-    ChiliPiper.submit(cpTenantDomain, cpRouterName, {
-      map: true,
-      lead: formData
-    });
-  }
+    const email = formData.email;
+  
+    // Track conversions
+    trackConversion(conversionName, email);
+  
+    // Conditionally trigger Chili Piper
+    if (chiliPiperForms.includes(formId)) {
+      ChiliPiper.submit(cpTenantDomain, cpRouterName, {
+        map: true,
+        lead: formData
+      });
+    }
 
   // Google Tag Manager
   window.dataLayer.push({
