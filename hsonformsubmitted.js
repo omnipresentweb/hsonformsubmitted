@@ -4,8 +4,8 @@ const heap = // initialize Heap SDK
 const mutiny = // initialize Mutiny SDK
 
 // Declare ChiliPiper params
-const cpTenantDomain = 'example';
-const cpRouterName = 'contact'; 
+const cpTenantDomain = "omnipresent";
+const cpRouterName = "book_a_call";
 
 // Define HS FormIDs that should trigger Chili Piper
 const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
