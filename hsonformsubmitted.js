@@ -114,7 +114,7 @@ async function trackConversion(formId, formConversionIDName, email) {
 }
 
 // Called from HS onFormSubmit embed to sent HS conversionID
-function updateFormConversionIDInput(formId, formConversionIDName) {
+function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
     logToConsoleAndArray("onFormSubmit FormID: " + formId);
     logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
     try {
