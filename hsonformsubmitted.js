@@ -105,6 +105,37 @@ async function trackConversion(name, email) {
   }
 }
 
+// Called from HS onFormSubmit embed
+function updateFormConversionIDInput(formId, formConversionIDName) {
+    logToConsoleAndArray("onFormSubmit FormID: " + formId);
+    logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
+    try {
+      logToConsoleAndArray(`Attempting to update form with ID: ${formId} and Conversion ID Name: ${formConversionIDName}`);
+      
+      // Find the form element with the matching data-form-id
+      const formElement = document.querySelector(`form[data-form-id="${formId}"]`);
+      if (formElement) {
+        logToConsoleAndArray('Form element found.');
+        
+        // Find the input element with name="web_event_conversion_id"
+        const inputElement = formElement.querySelector('input[name="web_event_conversion_id"]');
+        if (inputElement) {
+          logToConsoleAndArray('Input element found.');
+          
+          // Update its value
+          inputElement.value = formConversionIDName;
+          logToConsoleAndArray(`Input element value updated to: ${formConversionIDName}`);
+        } else {
+          errorToConsoleAndArray('Input element with name="web_event_conversion_id" not found.');
+        }
+      } else {
+        errorToConsoleAndArray('Form element with matching data-form-id not found.');
+      }
+    } catch (error) {
+      errorToConsoleAndArray('An error occurred:', error);
+    }
+}
+
 // Reusable function for onFormSubmitted
 async function onFormSubmitted(form, formId, conversionName) {
   logToConsoleAndArray(
