@@ -56,30 +56,38 @@ function getFormData(form) {
   );
 }
 
-// Function to send conversion data to analytic tools
-async function trackConversion(name, email) {
+// Called from HS onFormSubmit embed to send conversion data to analytic tools
+async function trackConversion(formId, formConversionIDName, email) {
   logToConsoleAndArray(
     "jsdeliver hsOnFormSubmitted script: trackConversion started"
   );
+
+  // Google Tag Manager
+  window.dataLayer.push({
+    event: "hubspot-form-submit",
+    "hs-form-guid": formId,
+    formConversionIDName,
+  });
+
   // Mutiny
   await waitForLibrary("mutiny", "client");
   const mutinyClient = window.mutiny.client;
   mutinyClient.trackConversion({
-    name,
+    formConversionIDName,
   });
 
   // Dreamdata
   if (email) {
     await waitForLibrary("analytics");
     analytics.identify(null, { email });
-    analytics.track(name);
+    analytics.track(formConversionIDName);
   }
 
   // Heap track form submission
   await waitForLibrary("heap", "track");
   heap.track("Form Submission", {
     email: email,
-    hsFormConversionIdName: name, // Assuming the name parameter contains the formConversionIDName
+    hsFormConversionIdName: formConversionIDName,
   });
 
   // Fetch contact ID and identify with Mutiny and Heap
@@ -105,7 +113,7 @@ async function trackConversion(name, email) {
   }
 }
 
-// Called from HS onFormSubmit embed
+// Called from HS onFormSubmit embed to sent HS conversionID
 function updateFormConversionIDInput(formId, formConversionIDName) {
     logToConsoleAndArray("onFormSubmit FormID: " + formId);
     logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
@@ -136,7 +144,7 @@ function updateFormConversionIDInput(formId, formConversionIDName) {
     }
 }
 
-// Reusable function for onFormSubmitted
+// Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function onFormSubmitted(form, formId, conversionName) {
   logToConsoleAndArray(
     "jsdeliver hsOnFormSubmitted script: onFormSubmitted function started"
@@ -144,8 +152,8 @@ async function onFormSubmitted(form, formId, conversionName) {
   const formData = getFormData(form);
   const email = formData.email;
 
-  // Track conversions
-  await trackConversion(conversionName, email);
+  // Run function trackConversions
+  await trackConversion(formId, conversionName, email);
 
   // Conditionally trigger Chili Piper
   if (chiliPiperForms.includes(formId)) {
@@ -156,16 +164,9 @@ async function onFormSubmitted(form, formId, conversionName) {
     });
     logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
   }
-
-  // Google Tag Manager
-  window.dataLayer.push({
-    event: "hubspot-form-submit",
-    "hs-form-guid": formId,
-    conversionName,
-  });
 }
 
-// Add your code here (from the provided code)
+// Send Mutiny experiments to analytics 
 document.addEventListener("DOMContentLoaded", async function () {
   try {
     await waitForLibrary("mutiny", "experiences");
@@ -191,5 +192,4 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
-// After your code execution, you can inspect logArray in the console
 console.log(logArray);
