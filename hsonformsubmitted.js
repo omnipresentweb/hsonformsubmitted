@@ -145,7 +145,7 @@ function updateFormConversionIDInput(formId, formConversionIDName) {
 }
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
-async function onFormSubmitted(form, formId, conversionName) {
+async function jrOnFormSubmitted(form, formId, conversionName) {
   logToConsoleAndArray(
     "jsdeliver hsOnFormSubmitted script: onFormSubmitted function started"
   );
