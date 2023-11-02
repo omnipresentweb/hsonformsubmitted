@@ -178,8 +178,8 @@ async function trackConversion(formId, formConversionIDName, email) {
     event: "hubspot-form-submit",
     "hs-form-guid": formId,
     formConversionIDName,
-    logToConsoleAndArray("Datalayer push for GTM event ran with event name 'hubspot-form-submit' + formID + formConversionIDName.");
   });
+  logToConsoleAndArray(`Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`);
 
   // Mutiny
   try {
