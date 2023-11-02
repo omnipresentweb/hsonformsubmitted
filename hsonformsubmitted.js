@@ -3,14 +3,14 @@ const logArray = [];
 
 // Function to add logs to the logArray
 function logToConsoleAndArray(...messages) {
-    console.log(...messages);
-    logArray.push(messages.join(' '));
+  console.log(...messages);
+  logArray.push(messages.join(" "));
 }
 
 // Function to add errors to the logArray
 function errorToConsoleAndArray(...messages) {
-    console.error(...messages);
-    logArray.push("ERROR:", messages.join(' '));
+  console.error(...messages);
+  logArray.push("ERROR:", messages.join(" "));
 }
 
 logToConsoleAndArray(
@@ -173,13 +173,22 @@ async function trackConversion(formId, formConversionIDName, email) {
     "jsdeliver hsOnFormSubmitted script: trackConversion started"
   );
 
+   // Check if all parameters are received
+   if (!formId || !formConversionIDName || !email) {
+    errorToConsoleAndArray("Missing parameters in trackConversion:", 
+      `formId: ${formId}, formConversionIDName: ${formConversionIDName}, email: ${email}`);
+    return;  // Exit the function early if any of the parameters are missing
+  }
+
   // Google Tag Manager
   window.dataLayer.push({
     event: "hubspot-form-submit",
     "hs-form-guid": formId,
     formConversionIDName,
   });
-  logToConsoleAndArray(`Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`);
+  logToConsoleAndArray(
+    `Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`
+  );
 
   // Mutiny
   try {
@@ -188,7 +197,9 @@ async function trackConversion(formId, formConversionIDName, email) {
     mutinyClient.trackConversion({
       formConversionIDName,
     });
-    logToConsoleAndArray("Mutiny trackConversion ran with formConversionIDName.");
+    logToConsoleAndArray(
+      "Mutiny trackConversion ran with formConversionIDName."
+    );
   } catch (error) {
     handleError("Mutiny trackConversion", error);
   }
@@ -199,7 +210,9 @@ async function trackConversion(formId, formConversionIDName, email) {
       await waitForLibrary("analytics");
       analytics.identify(null, { email });
       analytics.track(formConversionIDName);
-      logToConsoleAndArray("Dreamdata identify and track ran with email and formConversionIDName.");
+      logToConsoleAndArray(
+        "Dreamdata identify and track ran with email and formConversionIDName."
+      );
     }
   } catch (error) {
     handleError("Dreamdata trackConversion", error);
@@ -211,8 +224,10 @@ async function trackConversion(formId, formConversionIDName, email) {
     heap.track("Form Submission", {
       email: email,
       hsFormConversionIdName: formConversionIDName,
-      logToConsoleAndArray("Heap track 'Form Submission' ran with email and formConversionIDName.");
     });
+    logToConsoleAndArray(
+      "Heap track 'Form Submission' ran with email and formConversionIDName."
+    );
   } catch (error) {
     handleError("Heap trackConversion", error);
   }
@@ -223,8 +238,13 @@ async function trackConversion(formId, formConversionIDName, email) {
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
-  logToConsoleAndArray("jrUpdateFormConversionIDInput - onFormSubmit FormID: " + formId);
-  logToConsoleAndArray("jrUpdateFormConversionIDInput - formConversionIDName: " + formConversionIDName);
+  logToConsoleAndArray(
+    "jrUpdateFormConversionIDInput - onFormSubmit FormID: " + formId
+  );
+  logToConsoleAndArray(
+    "jrUpdateFormConversionIDInput - formConversionIDName: " +
+      formConversionIDName
+  );
   try {
     logToConsoleAndArray(
       `Attempting to update form with ID: ${formId} and Conversion ID Name: ${formConversionIDName}`
@@ -266,32 +286,34 @@ function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function jrOnFormSubmitted(form, formId, conversionName) {
-    logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
-    const formData = getFormData(form);
-    const email = formData.email;
-  
+  logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
+  const formData = getFormData(form);
+  const email = formData.email;
+
+  try {
+    // Run function trackConversions
+    await trackConversion(formId, conversionName, email);
+    logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
+  } catch (error) {
+    logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
+  }
+
+  // Conditionally trigger Chili Piper
+  if (chiliPiperForms.includes(formId)) {
     try {
-      // Run function trackConversions
-      await trackConversion(formId, conversionName, email);
-      logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
+      await waitForLibrary("ChiliPiper");
+      ChiliPiper.submit(cpTenantDomain, cpRouterName, {
+        map: true,
+        lead: formData,
+      });
+      logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
     } catch (error) {
-      logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
+      logToConsoleAndArray(
+        `Error during ChiliPiper submission: ${error.message}`
+      );
     }
-  
-    // Conditionally trigger Chili Piper
-    if (chiliPiperForms.includes(formId)) {
-      try {
-        await waitForLibrary("ChiliPiper");
-        ChiliPiper.submit(cpTenantDomain, cpRouterName, {
-          map: true,
-          lead: formData,
-        });
-        logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
-      } catch (error) {
-        logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
-      }
-    }
-  }  
+  }
+}
 
 // Send Mutiny experiments to analytics
 document.addEventListener("DOMContentLoaded", async function () {
