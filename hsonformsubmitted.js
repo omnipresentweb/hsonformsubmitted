@@ -169,72 +169,67 @@ function identifyWithAnalytics() {
 
 // Called from HS onFormSubmit embed to send conversion data to analytic tools
 async function trackConversion(formId, formConversionIDName, email) {
-  logToConsoleAndArray(
-    "jsdeliver hsOnFormSubmitted script: trackConversion started"
-  );
-
-   // Check if all parameters are received
-   if (!formId || !formConversionIDName || !email) {
-    errorToConsoleAndArray("Missing parameters in trackConversion:", 
-      `formId: ${formId}, formConversionIDName: ${formConversionIDName}, email: ${email}`);
-    return;  // Exit the function early if any of the parameters are missing
-  }
-
-  // Google Tag Manager
-  window.dataLayer.push({
-    event: "hubspot-form-submit",
-    "hs-form-guid": formId,
-    formConversionIDName,
-  });
-  logToConsoleAndArray(
-    `Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`
-  );
-
-  // Mutiny
-  try {
-    await waitForLibrary("mutiny", "client");
-    const mutinyClient = window.mutiny.client;
-    mutinyClient.trackConversion({
+    logToConsoleAndArray("jsdeliver hsOnFormSubmitted script: trackConversion started");
+  
+    // Check if all parameters are received
+    if (!formId || !formConversionIDName || !email) {
+      errorToConsoleAndArray("Missing parameters in trackConversion:", 
+        `formId: ${formId}, formConversionIDName: ${formConversionIDName}, email: ${email}`);
+      return;  // Exit the function early if any of the parameters are missing
+    }
+  
+    // Google Tag Manager
+    window.dataLayer.push({
+      event: "hubspot-form-submit",
+      "hs-form-guid": formId,
       formConversionIDName,
     });
-    logToConsoleAndArray(
-      "Mutiny trackConversion ran with formConversionIDName."
-    );
-  } catch (error) {
-    handleError("Mutiny trackConversion", error);
-  }
-
-  // Dreamdata
-  try {
-    if (email) {
-      await waitForLibrary("analytics");
-      analytics.identify(null, { email });
-      analytics.track(formConversionIDName);
-      logToConsoleAndArray(
-        "Dreamdata identify and track ran with email and formConversionIDName."
-      );
+    logToConsoleAndArray(`Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`);
+  
+    // Mutiny
+    logToConsoleAndArray("Attempting to track conversion with Mutiny");
+    try {
+      await waitForLibrary("mutiny", "client");
+      const mutinyClient = window.mutiny.client;
+      mutinyClient.trackConversion({
+        formConversionIDName,
+      });
+      logToConsoleAndArray("Mutiny trackConversion ran successfully");
+    } catch (error) {
+      handleError("Mutiny trackConversion", error);
     }
-  } catch (error) {
-    handleError("Dreamdata trackConversion", error);
-  }
-
-  // Heap track form submission
-  try {
-    await waitForLibrary("heap", "track");
-    heap.track("Form Submission", {
-      email: email,
-      hsFormConversionIdName: formConversionIDName,
-    });
-    logToConsoleAndArray(
-      "Heap track 'Form Submission' ran with email and formConversionIDName."
-    );
-  } catch (error) {
-    handleError("Heap trackConversion", error);
-  }
-
-  // Fetch contact ID and identify with Mutiny and Heap
-  identifyWithAnalytics();
-}
+  
+    // Dreamdata
+    logToConsoleAndArray("Attempting to identify and track with Dreamdata");
+    try {
+      if (email) {
+        await waitForLibrary("analytics");
+        analytics.identify(null, { email });
+        analytics.track(formConversionIDName);
+        logToConsoleAndArray("Dreamdata identify and track ran successfully");
+      }
+    } catch (error) {
+      handleError("Dreamdata trackConversion", error);
+    }
+  
+    // Heap track form submission
+    logToConsoleAndArray("Attempting to track form submission with Heap");
+    try {
+      await waitForLibrary("heap", "track");
+      heap.track("Form Submission", {
+        email: email,
+        hsFormConversionIdName: formConversionIDName,
+      });
+      logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
+    } catch (error) {
+      handleError("Heap trackConversion", error);
+    }
+  
+    // Fetch contact ID and identify with Mutiny and Heap
+    logToConsoleAndArray("Attempting to identify with analytics");
+    identifyWithAnalytics();
+    logToConsoleAndArray("trackConversion function completed");
+  }  
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
