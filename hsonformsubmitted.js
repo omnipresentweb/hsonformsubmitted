@@ -2,15 +2,15 @@
 const logArray = [];
 
 // Function to add logs to the logArray
-function logToConsoleAndArray(message) {
-  console.log(message);
-  logArray.push(message);
+function logToConsoleAndArray(...messages) {
+    console.log(...messages);
+    logArray.push(messages.join(' '));
 }
 
 // Function to add errors to the logArray
-function errorToConsoleAndArray(message) {
-  console.error(message);
-  logArray.push(`ERROR: ${message}`);
+function errorToConsoleAndArray(...messages) {
+    console.error(...messages);
+    logArray.push("ERROR:", messages.join(' '));
 }
 
 logToConsoleAndArray(
@@ -144,8 +144,8 @@ function identifyWithAnalytics() {
 
   // Try to identify with Mutiny
   try {
-    if (typeof mutinyClient.identify === "function") {
-      mutinyClient.identify(contactId, { email: storedEmail });
+    if (typeof window.mutinyClient.identify === "function") {
+      window.mutinyClient.identify(contactId, { email: storedEmail });
       logToConsoleAndArray(
         `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
       );
