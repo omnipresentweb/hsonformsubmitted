@@ -60,6 +60,7 @@ window.fetchContactId = async function (hubspotutk) {
       contactInfo.contactId
     );
     logToConsoleAndArray("Local Storage hubspot_email set:", contactInfo.email);
+    identifyWithAnalytics();
   } catch (error) {
     errorToConsoleAndArray("Error:", error);
   }
@@ -128,6 +129,36 @@ function getFormData(form) {
   );
 }
 
+// Function to send identity to analytics tools
+function identifyWithAnalytics() {
+  try {
+    const contactId = localStorage.getItem("hubspot_contactId");
+    const storedEmail = localStorage.getItem("hubspot_email");
+
+    if (!contactId || !storedEmail) {
+      throw new Error("Contact ID or email not found in local storage.");
+    }
+
+    if (typeof mutinyClient.identify === "function") {
+      // Identify with Mutiny
+      mutinyClient.identify(contactId, { email: storedEmail });
+      logToConsoleAndArray(
+        `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
+      );
+    } else {
+      errorToConsoleAndArray("Error: Mutiny identify method not found");
+    }
+
+    // Identify with Heap
+    heap.identify(contactId);
+    logToConsoleAndArray(
+      `Sent identify call to Heap with contact ID: ${contactId}`
+    );
+  } catch (error) {
+    handleError("identifyWithAnalytics", error);
+  }
+}
+
 // Called from HS onFormSubmit embed to send conversion data to analytic tools
 async function trackConversion(formId, formConversionIDName, email) {
   logToConsoleAndArray(
@@ -163,32 +194,7 @@ async function trackConversion(formId, formConversionIDName, email) {
   });
 
   // Fetch contact ID and identify with Mutiny and Heap
-  try {
-    const contactId = localStorage.getItem("hubspot_contactId");
-    const storedEmail = localStorage.getItem("hubspot_email");
-
-    if (!contactId || !storedEmail) {
-      throw new Error("Contact ID or email not found in local storage.");
-    }
-
-    if (typeof mutinyClient.identify === "function") {
-      // Identify with Mutiny
-      mutinyClient.identify(contactId, { email });
-      logToConsoleAndArray(
-        `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${email}`
-      );
-    } else {
-      errorToConsoleAndArray("Error: Mutiny identify method not found");
-    }
-
-    // Identify with Heap
-    heap.identify(contactId);
-    logToConsoleAndArray(
-      `Sent identify call to Heap with contact ID: ${contactId}`
-    );
-  } catch (error) {
-    handleError("trackConversion", error);
-  }
+  identifyWithAnalytics();
 }
 
 // Called from HS onFormSubmit embed to sent HS conversionID
