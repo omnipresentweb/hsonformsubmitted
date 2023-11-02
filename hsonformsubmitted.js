@@ -178,6 +178,7 @@ async function trackConversion(formId, formConversionIDName, email) {
     event: "hubspot-form-submit",
     "hs-form-guid": formId,
     formConversionIDName,
+    logToConsoleAndArray("Datalayer push for GTM event ran with event name 'hubspot-form-submit' + formID + formConversionIDName.");
   });
 
   // Mutiny
@@ -187,6 +188,7 @@ async function trackConversion(formId, formConversionIDName, email) {
     mutinyClient.trackConversion({
       formConversionIDName,
     });
+    logToConsoleAndArray("Mutiny trackConversion ran with formConversionIDName.");
   } catch (error) {
     handleError("Mutiny trackConversion", error);
   }
@@ -197,6 +199,7 @@ async function trackConversion(formId, formConversionIDName, email) {
       await waitForLibrary("analytics");
       analytics.identify(null, { email });
       analytics.track(formConversionIDName);
+      logToConsoleAndArray("Dreamdata identify and track ran with email and formConversionIDName.");
     }
   } catch (error) {
     handleError("Dreamdata trackConversion", error);
@@ -208,6 +211,7 @@ async function trackConversion(formId, formConversionIDName, email) {
     heap.track("Form Submission", {
       email: email,
       hsFormConversionIdName: formConversionIDName,
+      logToConsoleAndArray("Heap track 'Form Submission' ran with email and formConversionIDName.");
     });
   } catch (error) {
     handleError("Heap trackConversion", error);
@@ -219,8 +223,8 @@ async function trackConversion(formId, formConversionIDName, email) {
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
-  logToConsoleAndArray("onFormSubmit FormID: " + formId);
-  logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
+  logToConsoleAndArray("jrUpdateFormConversionIDInput - onFormSubmit FormID: " + formId);
+  logToConsoleAndArray("jrUpdateFormConversionIDInput - formConversionIDName: " + formConversionIDName);
   try {
     logToConsoleAndArray(
       `Attempting to update form with ID: ${formId} and Conversion ID Name: ${formConversionIDName}`
@@ -262,25 +266,32 @@ function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function jrOnFormSubmitted(form, formId, conversionName) {
-  logToConsoleAndArray(
-    "jsdeliver hsOnFormSubmitted script: onFormSubmitted function started"
-  );
-  const formData = getFormData(form);
-  const email = formData.email;
-
-  // Run function trackConversions
-  await trackConversion(formId, conversionName, email);
-
-  // Conditionally trigger Chili Piper
-  if (chiliPiperForms.includes(formId)) {
-    await waitForLibrary("ChiliPiper");
-    ChiliPiper.submit(cpTenantDomain, cpRouterName, {
-      map: true,
-      lead: formData,
-    });
-    logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
-  }
-}
+    logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
+    const formData = getFormData(form);
+    const email = formData.email;
+  
+    try {
+      // Run function trackConversions
+      await trackConversion(formId, conversionName, email);
+      logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
+    } catch (error) {
+      logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
+    }
+  
+    // Conditionally trigger Chili Piper
+    if (chiliPiperForms.includes(formId)) {
+      try {
+        await waitForLibrary("ChiliPiper");
+        ChiliPiper.submit(cpTenantDomain, cpRouterName, {
+          map: true,
+          lead: formData,
+        });
+        logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
+      } catch (error) {
+        logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
+      }
+    }
+  }  
 
 // Send Mutiny experiments to analytics
 document.addEventListener("DOMContentLoaded", async function () {
