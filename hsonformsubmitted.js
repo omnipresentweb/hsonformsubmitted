@@ -131,37 +131,40 @@ function getFormData(form) {
 
 // Function to send identity to analytics tools
 function identifyWithAnalytics() {
-    const contactId = localStorage.getItem("hubspot_contactId");
-    const storedEmail = localStorage.getItem("hubspot_email");
+  const contactId = localStorage.getItem("hubspot_contactId");
+  const storedEmail = localStorage.getItem("hubspot_email");
 
-    if (!contactId || !storedEmail) {
-        handleError("identifyWithAnalytics", "Contact ID or email not found in local storage.");
-        return;
-    }
+  if (!contactId || !storedEmail) {
+    handleError(
+      "identifyWithAnalytics",
+      "Contact ID or email not found in local storage."
+    );
+    return;
+  }
 
-    // Try to identify with Mutiny
-    try {
-        if (typeof mutinyClient.identify === "function") {
-            mutinyClient.identify(contactId, { email: storedEmail });
-            logToConsoleAndArray(
-                `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
-            );
-        } else {
-            errorToConsoleAndArray("Error: Mutiny identify method not found");
-        }
-    } catch (error) {
-        handleError("identifyWithMutiny", error);
+  // Try to identify with Mutiny
+  try {
+    if (typeof mutinyClient.identify === "function") {
+      mutinyClient.identify(contactId, { email: storedEmail });
+      logToConsoleAndArray(
+        `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
+      );
+    } else {
+      errorToConsoleAndArray("Error: Mutiny identify method not found");
     }
+  } catch (error) {
+    handleError("identifyWithMutiny", error);
+  }
 
-    // Try to identify with Heap
-    try {
-        heap.identify(contactId);
-        logToConsoleAndArray(
-            `Sent identify call to Heap with contact ID: ${contactId}`
-        );
-    } catch (error) {
-        handleError("identifyWithHeap", error);
-    }
+  // Try to identify with Heap
+  try {
+    heap.identify(contactId);
+    logToConsoleAndArray(
+      `Sent identify call to Heap with contact ID: ${contactId}`
+    );
+  } catch (error) {
+    handleError("identifyWithHeap", error);
+  }
 }
 
 // Called from HS onFormSubmit embed to send conversion data to analytic tools
@@ -178,25 +181,37 @@ async function trackConversion(formId, formConversionIDName, email) {
   });
 
   // Mutiny
-  await waitForLibrary("mutiny", "client");
-  const mutinyClient = window.mutiny.client;
-  mutinyClient.trackConversion({
-    formConversionIDName,
-  });
+  try {
+    await waitForLibrary("mutiny", "client");
+    const mutinyClient = window.mutiny.client;
+    mutinyClient.trackConversion({
+      formConversionIDName,
+    });
+  } catch (error) {
+    handleError("Mutiny trackConversion", error);
+  }
 
   // Dreamdata
-  if (email) {
-    await waitForLibrary("analytics");
-    analytics.identify(null, { email });
-    analytics.track(formConversionIDName);
+  try {
+    if (email) {
+      await waitForLibrary("analytics");
+      analytics.identify(null, { email });
+      analytics.track(formConversionIDName);
+    }
+  } catch (error) {
+    handleError("Dreamdata trackConversion", error);
   }
 
   // Heap track form submission
-  await waitForLibrary("heap", "track");
-  heap.track("Form Submission", {
-    email: email,
-    hsFormConversionIdName: formConversionIDName,
-  });
+  try {
+    await waitForLibrary("heap", "track");
+    heap.track("Form Submission", {
+      email: email,
+      hsFormConversionIdName: formConversionIDName,
+    });
+  } catch (error) {
+    handleError("Heap trackConversion", error);
+  }
 
   // Fetch contact ID and identify with Mutiny and Heap
   identifyWithAnalytics();
