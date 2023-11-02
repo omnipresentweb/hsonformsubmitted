@@ -13,7 +13,9 @@ function errorToConsoleAndArray(message) {
   logArray.push(`ERROR: ${message}`);
 }
 
-logToConsoleAndArray("jsdeliver hsOnFormSubmitted script started");
+logToConsoleAndArray(
+  "jsdeliver hsOnFormSubmitted started (Hubspot ContactID capture, Send Analytics Identity and Events, Form Submit to Chili Piper)"
+);
 
 // Declare ChiliPiper params
 const cpTenantDomain = "omnipresent";
@@ -26,6 +28,76 @@ const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
 function handleError(context, error) {
   errorToConsoleAndArray(`An error occurred in ${context}: ${error}`);
 }
+
+// Helper function to retrieve the value of a cookie by its name
+function getCookieValueByName(cookieName) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${cookieName}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+}
+
+// Async function set local storage from Hubspot API ContactID via cookied hubspotutk value
+window.fetchContactId = async function (hubspotutk) {
+  try {
+    logToConsoleAndArray(`Fetching contact info for hubspotutk: ${hubspotutk}`);
+
+    const response = await fetch(
+      `https://user-analytics.omnipresent.workers.dev/?hubspotutk=${hubspotutk}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Server returned an error: ${response.statusText}`);
+    }
+
+    const contactInfo = await response.json();
+
+    logToConsoleAndArray("Contact Info received:", contactInfo);
+
+    localStorage.setItem("hubspot_contactId", contactInfo.contactId);
+    localStorage.setItem("hubspot_email", contactInfo.email);
+    logToConsoleAndArray(
+      "Local Storage hubspot_contactId set:",
+      contactInfo.contactId
+    );
+    logToConsoleAndArray("Local Storage hubspot_email set:", contactInfo.email);
+  } catch (error) {
+    errorToConsoleAndArray("Error:", error);
+  }
+};
+
+function waitForCookie(cookieName, timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+
+    const checkCookie = () => {
+      const cookieValue = getCookieValueByName(cookieName);
+
+      if (cookieValue) {
+        resolve(cookieValue);
+      } else if (Date.now() - startTime > timeout) {
+        reject(new Error(`Timeout waiting for ${cookieName} cookie.`));
+      } else {
+        setTimeout(checkCookie, 100);
+      }
+    };
+
+    checkCookie();
+  });
+}
+
+async function checkAndFetchContactId() {
+  try {
+    const hubspotutk = await waitForCookie("hubspotutk");
+
+    logToConsoleAndArray(
+      `Calling fetchContactId with hubspotutk: ${hubspotutk}`
+    );
+    window.fetchContactId(hubspotutk);
+  } catch (error) {
+    errorToConsoleAndArray("Error:", error);
+  }
+}
+checkAndFetchContactId();
 
 // Called to wait for specific libraries like Heap or Mutiny to load before running other code
 function waitForLibrary(namespace, property) {
@@ -92,7 +164,13 @@ async function trackConversion(formId, formConversionIDName, email) {
 
   // Fetch contact ID and identify with Mutiny and Heap
   try {
-    const contactId = await window.fetchContactId(email);
+    const contactId = localStorage.getItem("hubspot_contactId");
+    const storedEmail = localStorage.getItem("hubspot_email");
+
+    if (!contactId || !storedEmail) {
+      throw new Error("Contact ID or email not found in local storage.");
+    }
+
     if (typeof mutinyClient.identify === "function") {
       // Identify with Mutiny
       mutinyClient.identify(contactId, { email });
@@ -115,33 +193,45 @@ async function trackConversion(formId, formConversionIDName, email) {
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
-    logToConsoleAndArray("onFormSubmit FormID: " + formId);
-    logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
-    try {
-      logToConsoleAndArray(`Attempting to update form with ID: ${formId} and Conversion ID Name: ${formConversionIDName}`);
-      
-      // Find the form element with the matching data-form-id
-      const formElement = document.querySelector(`form[data-form-id="${formId}"]`);
-      if (formElement) {
-        logToConsoleAndArray('Form element found.');
-        
-        // Find the input element with name="web_event_conversion_id"
-        const inputElement = formElement.querySelector('input[name="web_event_conversion_id"]');
-        if (inputElement) {
-          logToConsoleAndArray('Input element found.');
-          
-          // Update its value
-          inputElement.value = formConversionIDName;
-          logToConsoleAndArray(`Input element value updated to: ${formConversionIDName}`);
-        } else {
-          errorToConsoleAndArray('Input element with name="web_event_conversion_id" not found.');
-        }
+  logToConsoleAndArray("onFormSubmit FormID: " + formId);
+  logToConsoleAndArray("formConversionIDName: " + formConversionIDName);
+  try {
+    logToConsoleAndArray(
+      `Attempting to update form with ID: ${formId} and Conversion ID Name: ${formConversionIDName}`
+    );
+
+    // Find the form element with the matching data-form-id
+    const formElement = document.querySelector(
+      `form[data-form-id="${formId}"]`
+    );
+    if (formElement) {
+      logToConsoleAndArray("Form element found.");
+
+      // Find the input element with name="web_event_conversion_id"
+      const inputElement = formElement.querySelector(
+        'input[name="web_event_conversion_id"]'
+      );
+      if (inputElement) {
+        logToConsoleAndArray("Input element found.");
+
+        // Update its value
+        inputElement.value = formConversionIDName;
+        logToConsoleAndArray(
+          `Input element value updated to: ${formConversionIDName}`
+        );
       } else {
-        errorToConsoleAndArray('Form element with matching data-form-id not found.');
+        errorToConsoleAndArray(
+          'Input element with name="web_event_conversion_id" not found.'
+        );
       }
-    } catch (error) {
-      errorToConsoleAndArray('An error occurred:', error);
+    } else {
+      errorToConsoleAndArray(
+        "Form element with matching data-form-id not found."
+      );
     }
+  } catch (error) {
+    errorToConsoleAndArray("An error occurred:", error);
+  }
 }
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
@@ -166,7 +256,7 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
   }
 }
 
-// Send Mutiny experiments to analytics 
+// Send Mutiny experiments to analytics
 document.addEventListener("DOMContentLoaded", async function () {
   try {
     await waitForLibrary("mutiny", "experiences");
