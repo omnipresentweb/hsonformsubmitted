@@ -199,6 +199,19 @@ async function trackConversion(formId, formConversionIDName, email) {
       handleError("Mutiny trackConversion", error);
     }
   
+    // Heap track form submission
+    logToConsoleAndArray("Attempting to track form submission with Heap");
+    try {
+        await waitForLibrary("heap", "track");
+        heap.track("Form Submission", {
+        email: email,
+        hsFormConversionIdName: formConversionIDName,
+        });
+        logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
+    } catch (error) {
+        handleError("Heap trackConversion", error);
+    }
+
     // Dreamdata
     logToConsoleAndArray("Attempting to identify and track with Dreamdata");
     try {
@@ -210,19 +223,6 @@ async function trackConversion(formId, formConversionIDName, email) {
       }
     } catch (error) {
       handleError("Dreamdata trackConversion", error);
-    }
-  
-    // Heap track form submission
-    logToConsoleAndArray("Attempting to track form submission with Heap");
-    try {
-      await waitForLibrary("heap", "track");
-      heap.track("Form Submission", {
-        email: email,
-        hsFormConversionIdName: formConversionIDName,
-      });
-      logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
-    } catch (error) {
-      handleError("Heap trackConversion", error);
     }
   
     // Fetch contact ID and identify with Mutiny and Heap
