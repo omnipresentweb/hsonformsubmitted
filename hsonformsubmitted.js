@@ -102,17 +102,19 @@ checkAndFetchContactId();
 
 // Called to wait for specific libraries like Heap or Mutiny to load before running other code
 function waitForLibrary(namespace, property) {
-  return new Promise((resolve, reject) => {
-    const checkLibrary = () => {
-      if (window[namespace] && window[namespace][property]) {
-        resolve();
-      } else {
-        setTimeout(checkLibrary, 100);
-      }
-    };
-    checkLibrary();
-  });
-}
+    return new Promise((resolve, reject) => {
+      const checkLibrary = () => {
+        console.log(`Checking for ${namespace}.${property}`);
+        if (window[namespace] && window[namespace][property]) {
+          console.log(`${namespace}.${property} is available`);
+          resolve();
+        } else {
+          setTimeout(checkLibrary, 100);
+        }
+      };
+      checkLibrary();
+    });
+  }  
 
 // Function to get form data
 function getFormData(form) {
@@ -284,34 +286,37 @@ function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function jrOnFormSubmitted(form, formId, conversionName) {
-  logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
-  const formData = getFormData(form);
-  const email = formData.email;
-
-  try {
-    // Run function trackConversions
-    await trackConversion(formId, conversionName, email);
-    logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
-  } catch (error) {
-    logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
-  }
-
-  // Conditionally trigger Chili Piper
-  if (chiliPiperForms.includes(formId)) {
+    logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
+  
     try {
-      await waitForLibrary("ChiliPiper");
-      ChiliPiper.submit(cpTenantDomain, cpRouterName, {
-        map: true,
-        lead: formData,
-      });
-      logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
+      // Extract form data from the form parameter
+      const formData = getFormData(form);
+      const email = formData.email;
+      
+      // Run function trackConversions
+      await trackConversion(formId, conversionName, email);
+      logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
     } catch (error) {
-      logToConsoleAndArray(
-        `Error during ChiliPiper submission: ${error.message}`
-      );
+      logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
     }
-  }
-}
+  
+    // Use the chiliPiperForms array to check if Chili Piper should be triggered
+    if (chiliPiperForms.includes(formId)) {
+      try {
+        if (typeof ChiliPiper !== 'undefined') {
+          ChiliPiper.submit(cpTenantDomain, cpRouterName, {
+              map: true,
+              lead: formData
+          });
+          logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
+        } else {
+          logToConsoleAndArray("Chili Piper is undefined.");
+        }
+      } catch (error) {
+        logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
+      }
+    }
+  }  
 
 // Send Mutiny experiments to analytics
 document.addEventListener("DOMContentLoaded", async function () {
