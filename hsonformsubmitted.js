@@ -212,6 +212,12 @@ async function trackConversion(formId, formConversionIDName, email) {
         handleError("Heap trackConversion", error);
     }
 
+    // Fetch contact ID and identify with Mutiny and Heap
+    logToConsoleAndArray("Attempting to identify with analytics");
+    identifyWithAnalytics();
+    logToConsoleAndArray("trackConversion function completed");
+
+    /* test not running dreamdata
     // Dreamdata
     logToConsoleAndArray("Attempting to identify and track with Dreamdata");
     try {
@@ -224,12 +230,9 @@ async function trackConversion(formId, formConversionIDName, email) {
     } catch (error) {
       handleError("Dreamdata trackConversion", error);
     }
-  
-    // Fetch contact ID and identify with Mutiny and Heap
-    logToConsoleAndArray("Attempting to identify with analytics");
-    identifyWithAnalytics();
-    logToConsoleAndArray("trackConversion function completed");
-  }  
+    */
+  }
+
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
