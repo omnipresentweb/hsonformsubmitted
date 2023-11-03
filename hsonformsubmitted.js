@@ -287,10 +287,11 @@ function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function jrOnFormSubmitted(form, formId, conversionName) {
     logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
+    let formData = null;
   
     try {
       // Extract form data from the form parameter
-      const formData = getFormData(form);
+      formData = getFormData(form);
       const email = formData.email;
       
       // Run function trackConversions
@@ -303,14 +304,14 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
     // Use the chiliPiperForms array to check if Chili Piper should be triggered
     if (chiliPiperForms.includes(formId)) {
       try {
-        if (typeof ChiliPiper !== 'undefined') {
+        if (typeof ChiliPiper !== 'undefined' && formData) {
           ChiliPiper.submit(cpTenantDomain, cpRouterName, {
               map: true,
               lead: formData
           });
           logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
         } else {
-          logToConsoleAndArray("Chili Piper is undefined.");
+          logToConsoleAndArray("Chili Piper is undefined or formData is null.");
         }
       } catch (error) {
         logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
