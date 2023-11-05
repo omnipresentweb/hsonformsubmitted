@@ -101,20 +101,24 @@ async function checkAndFetchContactId() {
 checkAndFetchContactId();
 
 // Called to wait for specific libraries like Heap or Mutiny to load before running other code
-function waitForLibrary(namespace, property) {
-    return new Promise((resolve, reject) => {
-      const checkLibrary = () => {
-        console.log(`Checking for ${namespace}.${property}`);
-        if (window[namespace] && window[namespace][property]) {
-          console.log(`${namespace}.${property} is available`);
-          resolve();
-        } else {
-          setTimeout(checkLibrary, 100);
-        }
-      };
-      checkLibrary();
-    });
-  }  
+function waitForLibrary(namespace, property, maxRetries = 120) {
+  let retries = 0;
+  return new Promise((resolve, reject) => {
+    const checkLibrary = () => {
+      if (window[namespace] && window[namespace][property]) {
+        resolve();
+      } else if (retries >= maxRetries) {
+        reject(
+          new Error(`Reached max retries waiting for ${namespace}.${property}`)
+        );
+      } else {
+        retries++;
+        setTimeout(checkLibrary, 100);
+      }
+    };
+    checkLibrary();
+  });
+}
 
 // Function to get form data
 function getFormData(form) {
@@ -146,13 +150,16 @@ function identifyWithAnalytics() {
 
   // Try to identify with Mutiny
   try {
-    if (typeof window.mutinyClient.identify === "function") {
+    if (
+      window.mutinyClient &&
+      typeof window.mutinyClient.identify === "function"
+    ) {
       window.mutinyClient.identify(contactId, { email: storedEmail });
       logToConsoleAndArray(
         `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
       );
     } else {
-      errorToConsoleAndArray("Error: Mutiny identify method not found");
+      errorToConsoleAndArray("Mutiny client or identify method not found.");
     }
   } catch (error) {
     handleError("identifyWithMutiny", error);
@@ -160,10 +167,14 @@ function identifyWithAnalytics() {
 
   // Try to identify with Heap
   try {
-    heap.identify(contactId);
-    logToConsoleAndArray(
-      `Sent identify call to Heap with contact ID: ${contactId}`
-    );
+    if (typeof heap !== "undefined" && typeof heap.identify === "function") {
+      heap.identify(contactId);
+      logToConsoleAndArray(
+        `Sent identify call to Heap with contact ID: ${contactId}`
+      );
+    } else {
+      errorToConsoleAndArray("Heap identify method not found.");
+    }
   } catch (error) {
     handleError("identifyWithHeap", error);
   }
@@ -171,70 +182,78 @@ function identifyWithAnalytics() {
 
 // Called from HS onFormSubmit embed to send conversion data to analytic tools
 async function trackConversion(formId, formConversionIDName, email) {
-    logToConsoleAndArray("jsdeliver hsOnFormSubmitted script: trackConversion started");
-  
-    // Check if all parameters are received
-    if (!formId || !formConversionIDName || !email) {
-      errorToConsoleAndArray("Missing parameters in trackConversion:", 
-        `formId: ${formId}, formConversionIDName: ${formConversionIDName}, email: ${email}`);
-      return;  // Exit the function early if any of the parameters are missing
-    }
-  
-    // Google Tag Manager
-    window.dataLayer.push({
-      event: "hubspot-form-submit",
-      "hs-form-guid": formId,
+  logToConsoleAndArray(
+    "jsdeliver hsOnFormSubmitted script: trackConversion started"
+  );
+
+  // Check if all parameters are received
+  if (!formId || !formConversionIDName || !email) {
+    errorToConsoleAndArray(
+      "Missing parameters in trackConversion:",
+      `formId: ${formId}, formConversionIDName: ${formConversionIDName}, email: ${email}`
+    );
+    return; // Exit the function early if any of the parameters are missing
+  }
+
+  // Google Tag Manager
+  window.dataLayer.push({
+    event: "hubspot-form-submit",
+    "hs-form-guid": formId,
+    formConversionIDName,
+  });
+  logToConsoleAndArray(
+    `Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`
+  );
+
+  // Mutiny
+  logToConsoleAndArray("Attempting to track conversion with Mutiny");
+  try {
+    await waitForLibrary("mutiny", "client", 50);
+    const mutinyClient = window.mutiny.client;
+    mutinyClient.trackConversion({
       formConversionIDName,
     });
-    logToConsoleAndArray(`Datalayer push for GTM event: ${formId}, formConversionIDName: ${formConversionIDName}`);
-  
-    // Mutiny
-    logToConsoleAndArray("Attempting to track conversion with Mutiny");
-    try {
-      await waitForLibrary("mutiny", "client");
-      const mutinyClient = window.mutiny.client;
-      mutinyClient.trackConversion({
-        formConversionIDName,
-      });
-      logToConsoleAndArray("Mutiny trackConversion ran successfully");
-    } catch (error) {
-      handleError("Mutiny trackConversion", error);
-    }
-  
-    // Heap track form submission
-    logToConsoleAndArray("Attempting to track form submission with Heap");
-    try {
-        await waitForLibrary("heap", "track");
-        heap.track("Form Submission", {
-        email: email,
-        hsFormConversionIdName: formConversionIDName,
-        });
-        logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
-    } catch (error) {
-        handleError("Heap trackConversion", error);
-    }
+    logToConsoleAndArray("Mutiny trackConversion ran successfully");
+  } catch (error) {
+    handleError("Mutiny trackConversion", error);
+  }
 
-    // Fetch contact ID and identify with Mutiny and Heap
-    logToConsoleAndArray("Attempting to identify with analytics");
-    identifyWithAnalytics();
-    logToConsoleAndArray("trackConversion function completed");
+  // Heap track form submission
+  logToConsoleAndArray("Attempting to track form submission with Heap");
+  try {
+    await waitForLibrary("heap", "track", 100);
+    heap.track("Form Submission", {
+      email: email,
+      hsFormConversionIdName: formConversionIDName,
+    });
+    logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
+  } catch (error) {
+    handleError("Heap trackConversion", error);
+  }
 
-    /* test not running dreamdata
-    // Dreamdata
-    logToConsoleAndArray("Attempting to identify and track with Dreamdata");
+  // Fetch contact ID and identify with Mutiny and Heap
+  logToConsoleAndArray("Attempting to identify with analytics");
+  identifyWithAnalytics();
+  logToConsoleAndArray("trackConversion function completed");
+
+  // Dreamdata
+  logToConsoleAndArray("Attempting to identify and track with Dreamdata");
+  if (!email) {
+    handleError(
+      "Dreamdata trackConversion",
+      new Error("Email is not defined.")
+    );
+  } else {
     try {
-      if (email) {
-        await waitForLibrary("analytics");
-        analytics.identify(null, { email });
-        analytics.track(formConversionIDName);
-        logToConsoleAndArray("Dreamdata identify and track ran successfully");
-      }
+      await waitForLibrary("analytics", "identify", 50);
+      analytics.identify(null, { email });
+      analytics.track(formConversionIDName);
+      logToConsoleAndArray("Dreamdata identify and track ran successfully");
     } catch (error) {
       handleError("Dreamdata trackConversion", error);
     }
-    */
   }
-
+}
 
 // Called from HS onFormSubmit embed to sent HS conversionID
 function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
@@ -286,44 +305,48 @@ function jrUpdateFormConversionIDInput(formId, formConversionIDName) {
 
 // Called from HS Embed onFormSubmit to trigger CP and trackConversions function
 async function jrOnFormSubmitted(form, formId, conversionName) {
-    logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
-    let formData = null;
-  
+  logToConsoleAndArray("jsdeliver jrOnFormSubmitted function started");
+  let formData = null;
+
+  try {
+    // Extract form data from the form parameter
+    formData = getFormData(form);
+    const email = formData.email;
+
+    // Run function trackConversions
+    await trackConversion(formId, conversionName, email);
+    logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
+  } catch (error) {
+    logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
+  }
+
+  // Use the chiliPiperForms array to check if Chili Piper should be triggered
+  if (chiliPiperForms.includes(formId)) {
     try {
-      // Extract form data from the form parameter
-      formData = getFormData(form);
-      const email = formData.email;
-      
-      // Run function trackConversions
-      await trackConversion(formId, conversionName, email);
-      logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
-    } catch (error) {
-      logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
-    }
-  
-    // Use the chiliPiperForms array to check if Chili Piper should be triggered
-    if (chiliPiperForms.includes(formId)) {
-      try {
-        if (typeof ChiliPiper !== 'undefined' && formData) {
-          ChiliPiper.submit(cpTenantDomain, cpRouterName, {
-              map: true,
-              lead: formData
-          });
-          logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
-        } else {
-          logToConsoleAndArray("Chili Piper is undefined or formData is null.");
-        }
-      } catch (error) {
-        logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
+      if (typeof ChiliPiper !== "undefined" && formData) {
+        ChiliPiper.submit(cpTenantDomain, cpRouterName, {
+          map: true,
+          lead: formData,
+        });
+        logToConsoleAndArray(
+          `Chili Piper form submitted for formId: ${formId}`
+        );
+      } else {
+        logToConsoleAndArray("Chili Piper is undefined or formData is null.");
       }
+    } catch (error) {
+      logToConsoleAndArray(
+        `Error during ChiliPiper submission: ${error.message}`
+      );
     }
-  }  
+  }
+}
 
 // Send Mutiny experiments to analytics
 document.addEventListener("DOMContentLoaded", async function () {
   try {
-    await waitForLibrary("mutiny", "experiences");
-    await waitForLibrary("heap", "track");
+    await waitForLibrary("mutiny", "experiences", 50);
+    await waitForLibrary("heap", "track", 50);
 
     if (window.mutiny.experiences.length === 0) {
       throw new Error("No valid data found in window.mutiny.experiences.");
