@@ -368,4 +368,49 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
+// Start track Wistia Videos via Heap
+var trackWistiaPlaysInHeap = function (video, percentage) {
+  var reportingObject = {
+    nameOfVideo: video.name(),
+    percentageReached: percentage,
+    duration: (video.duration() / 60).toFixed(2) + " minutes total",
+  };
+  window.heap.track("Wistia Video", reportingObject);
+};
+
+/*   Initialize all videos on the page to be handled by the Wistia integration */
+window._wq = window._wq || [];
+_wq.push({
+  _all: function (video) {
+    /* Define time markers in number of seconds */
+    var quarterPlayed = Math.floor(video.duration() / 4),
+      halfPlayed = Math.floor(video.duration() / 2),
+      threeQuartersPlayed = quarterPlayed * 3;
+
+    /*Track when a video is played */
+    video.bind("play", function () {
+      trackWistiaPlaysInHeap(video, 0);
+    });
+
+    /* Track quarters watched */
+    video.bind("secondchange", function (s) {
+      if (s === quarterPlayed) {
+        trackWistiaPlaysInHeap(video, 0.25);
+      }
+      if (s === halfPlayed) {
+        trackWistiaPlaysInHeap(video, 0.5);
+      }
+      if (s === threeQuartersPlayed) {
+        trackWistiaPlaysInHeap(video, 0.75);
+      }
+    });
+
+    /* Track videos finished */
+    video.bind("end", function () {
+      trackWistiaPlaysInHeap(video, 1);
+    });
+  },
+});
+// End track Wistia Videos via Heap
+
 console.log(logArray);
