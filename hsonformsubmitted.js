@@ -135,7 +135,7 @@ function getFormData(form) {
   );
 }
 
-function waitForMethod(namespace, property, maxRetries = 120, interval = 100) {
+function waitForMethod(namespace, property, maxRetries = 180, interval = 100) {
   let retries = 0;
   return new Promise((resolve, reject) => {
     const checkMethod = () => {
@@ -324,7 +324,7 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
 
   try {
     await checkAndFetchContactId();
-    
+
     // Extract form data from the form parameter
     formData = getFormData(form);
     const email = formData.email;
