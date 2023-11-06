@@ -183,7 +183,7 @@ function identifyWithAnalytics() {
 // Called from HS onFormSubmit embed to send conversion data to analytic tools
 async function trackConversion(formId, formConversionIDName, email) {
   logToConsoleAndArray(
-    "jsdeliver hsOnFormSubmitted script: trackConversion started"
+    "jsdeliver hsOnFormSubmit script: trackConversion started"
   );
 
   // Check if all parameters are received
@@ -194,6 +194,8 @@ async function trackConversion(formId, formConversionIDName, email) {
     );
     return; // Exit the function early if any of the parameters are missing
   }
+  
+  localStorage.setItem("hubspot_email", email); // Set bc prior issue where heap.identify failed identifyWithAnalytics bc hubspot_email wasn't set 
 
   // Google Tag Manager
   window.dataLayer.push({
