@@ -207,7 +207,6 @@ async function trackConversion(formId, formConversionIDName, email) {
     return; // Exit the function early if any of the parameters are missing
   }
 
-  localStorage.setItem("hubspot_email", email); // Set bc prior issue where heap.identify failed identifyWithAnalytics bc hubspot_email wasn't set
   localStorage.setItem("hubspot_email", email);
 
   // Google Tag Manager
@@ -324,10 +323,12 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
   let formData = null;
 
   try {
+    await checkAndFetchContactId();
+    
     // Extract form data from the form parameter
     formData = getFormData(form);
     const email = formData.email;
-
+    
     // Run function trackConversions
     await trackConversion(formId, conversionName, email);
     logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
