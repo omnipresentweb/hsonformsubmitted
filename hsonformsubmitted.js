@@ -135,8 +135,29 @@ function getFormData(form) {
   );
 }
 
-// Function to send identity to analytics tools
-function identifyWithAnalytics() {
+function waitForMethod(namespace, property, maxRetries = 120, interval = 100) {
+  let retries = 0;
+  return new Promise((resolve, reject) => {
+    const checkMethod = () => {
+      if (
+        window[namespace] &&
+        typeof window[namespace][property] === "function"
+      ) {
+        resolve();
+      } else if (retries >= maxRetries) {
+        reject(
+          new Error(`Reached max retries waiting for ${namespace}.${property}`)
+        );
+      } else {
+        retries++;
+        setTimeout(checkMethod, interval);
+      }
+    };
+    checkMethod();
+  });
+}
+
+async function identifyWithAnalytics() {
   const contactId = localStorage.getItem("hubspot_contactId");
   const storedEmail = localStorage.getItem("hubspot_email");
 
@@ -150,31 +171,22 @@ function identifyWithAnalytics() {
 
   // Try to identify with Mutiny
   try {
-    if (
-      window.mutinyClient &&
-      typeof window.mutinyClient.identify === "function"
-    ) {
-      window.mutinyClient.identify(contactId, { email: storedEmail });
-      logToConsoleAndArray(
-        `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
-      );
-    } else {
-      errorToConsoleAndArray("Mutiny client or identify method not found.");
-    }
+    await waitForMethod("mutinyClient", "identify");
+    window.mutinyClient.identify(contactId, { email: storedEmail });
+    logToConsoleAndArray(
+      `Sent identify call to Mutiny with contact ID: ${contactId} and email: ${storedEmail}`
+    );
   } catch (error) {
     handleError("identifyWithMutiny", error);
   }
 
   // Try to identify with Heap
   try {
-    if (typeof heap !== "undefined" && typeof heap.identify === "function") {
-      heap.identify(contactId);
-      logToConsoleAndArray(
-        `Sent identify call to Heap with contact ID: ${contactId}`
-      );
-    } else {
-      errorToConsoleAndArray("Heap identify method not found.");
-    }
+    await waitForMethod("heap", "identify");
+    window.heap.identify(contactId);
+    logToConsoleAndArray(
+      `Sent identify call to Heap with contact ID: ${contactId}`
+    );
   } catch (error) {
     handleError("identifyWithHeap", error);
   }
@@ -194,8 +206,9 @@ async function trackConversion(formId, formConversionIDName, email) {
     );
     return; // Exit the function early if any of the parameters are missing
   }
-  
-  localStorage.setItem("hubspot_email", email); // Set bc prior issue where heap.identify failed identifyWithAnalytics bc hubspot_email wasn't set 
+
+  localStorage.setItem("hubspot_email", email); // Set bc prior issue where heap.identify failed identifyWithAnalytics bc hubspot_email wasn't set
+  localStorage.setItem("hubspot_email", email);
 
   // Google Tag Manager
   window.dataLayer.push({
