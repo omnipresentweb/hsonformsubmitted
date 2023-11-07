@@ -3,13 +3,13 @@ const logArray = [];
 
 // Function to add logs to the logArray
 function logToConsoleAndArray(...messages) {
-  console.log(...messages);
+  /* console.log(...messages); */
   logArray.push(messages.join(" "));
 }
 
 // Function to add errors to the logArray
 function errorToConsoleAndArray(...messages) {
-  console.error(...messages);
+  /* console.error(...messages); */
   logArray.push("ERROR:", messages.join(" "));
 }
 
