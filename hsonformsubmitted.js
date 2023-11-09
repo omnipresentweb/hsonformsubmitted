@@ -184,6 +184,9 @@ async function identifyWithAnalytics() {
   try {
     await waitForMethod("heap", "identify");
     window.heap.identify(contactId);
+    window.heap.addUserProperties({
+      'Email': storedEmail
+    });
     logToConsoleAndArray(
       `Sent identify call to Heap with contact ID: ${contactId}`
     );
