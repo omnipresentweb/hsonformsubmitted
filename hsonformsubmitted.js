@@ -17,17 +17,17 @@ logToConsoleAndArray(
   "jsdeliver hsOnFormSubmitted started (Hubspot ContactID capture, Send Analytics Identity and Events, Form Submit to Chili Piper)"
 );
 
+// Common error handling function
+function handleError(context, error) {
+  errorToConsoleAndArray(`An error occurred in ${context}: ${error}`);
+}
+
 // Declare ChiliPiper params
 const cpTenantDomain = "omnipresent";
 const cpRouterName = "book_a_call";
 
 // Define HS FormIDs that should trigger Chili Piper
 const chiliPiperForms = ["a077eb7b-965f-4716-9c26-b4248ad50743"];
-
-// Common error handling function
-function handleError(context, error) {
-  errorToConsoleAndArray(`An error occurred in ${context}: ${error}`);
-}
 
 // Helper function to retrieve the value of a cookie by its name
 function getCookieValueByName(cookieName) {
@@ -389,45 +389,54 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 // Start track Wistia Videos via Heap
 var trackWistiaPlaysInHeap = function (video, percentage) {
-  var reportingObject = {
-    nameOfVideo: video.name(),
-    percentageReached: percentage,
-    duration: (video.duration() / 60).toFixed(2) + " minutes total",
-  };
-  window.heap.track("Wistia Video", reportingObject);
+  try {
+    var reportingObject = {
+      nameOfVideo: video.name(),
+      percentageReached: percentage,
+      duration: (video.duration() / 60).toFixed(2) + " minutes total",
+    };
+    window.heap.track("Wistia Video", reportingObject);
+    logToConsoleAndArray(`Video Played: ${reportingObject.nameOfVideo}, Percentage Reached: ${reportingObject.percentageReached * 100}%, Duration: ${reportingObject.duration}`);
+  } catch (error) {
+    handleError("trackWistiaPlaysInHeap", error);
+  }
 };
 
-/*   Initialize all videos on the page to be handled by the Wistia integration */
+/* Initialize all videos on the page to be handled by the Wistia integration */
 window._wq = window._wq || [];
 _wq.push({
   _all: function (video) {
-    /* Define time markers in number of seconds */
-    var quarterPlayed = Math.floor(video.duration() / 4),
-      halfPlayed = Math.floor(video.duration() / 2),
-      threeQuartersPlayed = quarterPlayed * 3;
+    try {
+      /* Define time markers in number of seconds */
+      var quarterPlayed = Math.floor(video.duration() / 4),
+        halfPlayed = Math.floor(video.duration() / 2),
+        threeQuartersPlayed = quarterPlayed * 3;
 
-    /*Track when a video is played */
-    video.bind("play", function () {
-      trackWistiaPlaysInHeap(video, 0);
-    });
+      /*Track when a video is played */
+      video.bind("play", function () {
+        trackWistiaPlaysInHeap(video, 0);
+      });
 
-    /* Track quarters watched */
-    video.bind("secondchange", function (s) {
-      if (s === quarterPlayed) {
-        trackWistiaPlaysInHeap(video, 0.25);
-      }
-      if (s === halfPlayed) {
-        trackWistiaPlaysInHeap(video, 0.5);
-      }
-      if (s === threeQuartersPlayed) {
-        trackWistiaPlaysInHeap(video, 0.75);
-      }
-    });
+      /* Track quarters watched */
+      video.bind("secondchange", function (s) {
+        if (s === quarterPlayed) {
+          trackWistiaPlaysInHeap(video, 0.25);
+        }
+        if (s === halfPlayed) {
+          trackWistiaPlaysInHeap(video, 0.5);
+        }
+        if (s === threeQuartersPlayed) {
+          trackWistiaPlaysInHeap(video, 0.75);
+        }
+      });
 
-    /* Track videos finished */
-    video.bind("end", function () {
-      trackWistiaPlaysInHeap(video, 1);
-    });
+      /* Track videos finished */
+      video.bind("end", function () {
+        trackWistiaPlaysInHeap(video, 1);
+      });
+    } catch (error) {
+      handleError("_wq video handling", error);
+    }
   },
 });
 // End track Wistia Videos via Heap
