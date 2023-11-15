@@ -185,7 +185,7 @@ async function identifyWithAnalytics() {
     await waitForMethod("heap", "identify");
     window.heap.identify(contactId);
     window.heap.addUserProperties({
-      'Email': storedEmail
+      "email": storedEmail,
     });
     logToConsoleAndArray(
       `Sent identify call to Heap with contact ID: ${contactId}`
@@ -331,7 +331,7 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
     // Extract form data from the form parameter
     formData = getFormData(form);
     const email = formData.email;
-    
+
     // Run function trackConversions
     await trackConversion(formId, conversionName, email);
     logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
@@ -346,6 +346,16 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
         ChiliPiper.submit(cpTenantDomain, cpRouterName, {
           map: true,
           lead: formData,
+          onBookingSuccess: function () {
+            heap.track("ChiliPiper Event", {
+              event: "Booking Success",
+            });
+          },
+          onClose: function () {
+            heap.track("ChiliPiper Event", {
+              event: "Modal Closed",
+            });
+          },
         });
         logToConsoleAndArray(
           `Chili Piper form submitted for formId: ${formId}`
@@ -396,7 +406,11 @@ var trackWistiaPlaysInHeap = function (video, percentage) {
       duration: (video.duration() / 60).toFixed(2) + " minutes total",
     };
     window.heap.track("Wistia Video", reportingObject);
-    logToConsoleAndArray(`Video Played: ${reportingObject.nameOfVideo}, Percentage Reached: ${reportingObject.percentageReached * 100}%, Duration: ${reportingObject.duration}`);
+    logToConsoleAndArray(
+      `Video Played: ${reportingObject.nameOfVideo}, Percentage Reached: ${
+        reportingObject.percentageReached * 100
+      }%, Duration: ${reportingObject.duration}`
+    );
   } catch (error) {
     handleError("trackWistiaPlaysInHeap", error);
   }
