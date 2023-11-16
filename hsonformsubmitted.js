@@ -327,19 +327,14 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
 
   try {
     await checkAndFetchContactId();
-
-    // Extract form data from the form parameter
     formData = getFormData(form);
     const email = formData.email;
-
-    // Run function trackConversions
     await trackConversion(formId, conversionName, email);
     logToConsoleAndArray("jrOnFormSubmitted: trackConversion completed");
   } catch (error) {
     logToConsoleAndArray(`Error during trackConversion: ${error.message}`);
   }
 
-  // Use the chiliPiperForms array to check if Chili Piper should be triggered
   if (chiliPiperForms.includes(formId)) {
     try {
       if (typeof ChiliPiper !== "undefined" && formData) {
@@ -347,27 +342,43 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
           map: true,
           lead: formData,
           onBookingSuccess: function () {
-            heap.track("ChiliPiper Event", {
-              event: "Booking Success",
-            });
+            heap.track("ChiliPiper Event", { event: "Booking Success" });
+            logToConsoleAndArray("Chili Piper booking success event triggered.");
+            try {
+              updateLocalStorageEvent('chilipiper onBookingSuccess');
+            } catch (error) {
+              logToConsoleAndArray(`Error updating localStorage for Booking Success: ${error.message}`);
+            }
           },
           onClose: function () {
-            heap.track("ChiliPiper Event", {
-              event: "Modal Closed",
-            });
+            heap.track("ChiliPiper Event", { event: "Modal Closed" });
+            logToConsoleAndArray("Chili Piper modal close event triggered.");
+            try {
+              updateLocalStorageEvent('chilipiper onClose');
+            } catch (error) {
+              logToConsoleAndArray(`Error updating localStorage for Modal Close: ${error.message}`);
+            }
           },
         });
-        logToConsoleAndArray(
-          `Chili Piper form submitted for formId: ${formId}`
-        );
+        logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
       } else {
         logToConsoleAndArray("Chili Piper is undefined or formData is null.");
       }
     } catch (error) {
-      logToConsoleAndArray(
-        `Error during ChiliPiper submission: ${error.message}`
-      );
+      logToConsoleAndArray(`Error during ChiliPiper submission: ${error.message}`);
     }
+  }
+}
+
+function updateLocalStorageEvent(eventName) {
+  try {
+    const currentDateTime = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const existingValue = localStorage.getItem(eventName);
+    const newValue = existingValue ? `${existingValue}, ${currentDateTime}` : currentDateTime;
+    localStorage.setItem(eventName, newValue);
+  } catch (error) {
+    // Throw error to be caught in the calling function
+    throw new Error(`LocalStorage update failed: ${error.message}`);
   }
 }
 
