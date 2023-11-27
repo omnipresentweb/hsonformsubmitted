@@ -159,15 +159,30 @@ function waitForMethod(namespace, property, maxRetries = 180, interval = 100) {
   });
 }
 
-async function identifyWithAnalytics() {
+// Function to handle local storage changes to Hubspot identify user ID
+function onLocalStorageChange(event) {
+  if (event.key === 'hubspot_contactId' || event.key === 'hubspot_email') {
+    logToConsoleAndArray(`Local Storage changed: ${event.key}`);
+    identifyWithAnalytics();
+  }
+}
+
+// Add listener to the window object
+window.addEventListener('storage', onLocalStorageChange, false);
+
+// Modify the identifyWithAnalytics function to check for retry logic
+async function identifyWithAnalytics(retryCount = 0) {
   const contactId = localStorage.getItem("hubspot_contactId");
   const storedEmail = localStorage.getItem("hubspot_email");
 
+  // If contactId or email is not available, retry after a delay
+  if ((!contactId || !storedEmail) && retryCount < 3) {
+    setTimeout(() => identifyWithAnalytics(retryCount + 1), 1000);
+    return;
+  }
+
   if (!contactId || !storedEmail) {
-    handleError(
-      "identifyWithAnalytics",
-      "Contact ID or email not found in local storage."
-    );
+    handleError("identifyWithAnalytics", "Contact ID or email not found in local storage.");
     return;
   }
 
