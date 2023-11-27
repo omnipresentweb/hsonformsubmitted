@@ -9,8 +9,10 @@ function logToConsoleAndArray(...messages) {
 
 // Function to add errors to the logArray
 function errorToConsoleAndArray(...messages) {
-  /* console.error(...messages); */
-  logArray.push("ERROR:", messages.join(" "));
+  const formattedMessages = messages.map(message => 
+    (message instanceof Error) ? `Error: ${message.message}` : message
+  );
+  logArray.push("ERROR:", formattedMessages.join(" "));
 }
 
 logToConsoleAndArray(
