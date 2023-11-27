@@ -238,16 +238,20 @@ async function trackConversion(formId, formConversionIDName, email) {
   }
 
   // Heap track form submission
-  logToConsoleAndArray("Attempting to track form submission with Heap");
+  logToConsoleAndArray("Attempting to track conversion with Mutiny");
   try {
-    await waitForLibrary("heap", "track", 100);
-    heap.track("Form Submission", {
-      email: email,
-      hsFormConversionIdName: formConversionIDName,
-    });
-    logToConsoleAndArray("Heap track 'Form Submission' ran successfully");
+    await waitForLibrary("mutiny", "client", 50);
+
+    if (window.mutiny && window.mutiny.client) {
+      window.mutiny.client.trackConversion({
+        name: formConversionIDName,
+      });
+      logToConsoleAndArray("Mutiny trackConversion ran successfully");
+    } else {
+      throw new Error("Mutiny client is not ready.");
+    }
   } catch (error) {
-    handleError("Heap trackConversion", error);
+    handleError("Mutiny trackConversion", error);
   }
 
   // Fetch contact ID and identify with Mutiny and Heap
