@@ -381,6 +381,7 @@ async function jrOnFormSubmitted(form, formId, conversionName) {
             }
           },
         });
+
         logToConsoleAndArray(`Chili Piper form submitted for formId: ${formId}`);
       } else {
         logToConsoleAndArray("Chili Piper is undefined or formData is null.");
@@ -414,11 +415,11 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     window.mutiny.experiences.forEach(function (experienceData) {
-      const { experience, variationName } = experienceData;
-      const mutinyExperienceValue = `${experience} (${variationName})`;
+      const { experience, impressionType } = experienceData;
+      const mutinyExperienceValue = `${experience} (${impressionType})`;
 
       window._mfq.push(["setVariable", "Mutiny", mutinyExperienceValue]);
-      heap.track("MutinyExperience", { experience, variation: variationName });
+      heap.track("MutinyExperience", { experience, impression: impressionType });
 
       logToConsoleAndArray(
         `Added Mutiny experience data: ${mutinyExperienceValue}`
